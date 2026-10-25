@@ -12202,6 +12202,7 @@ const CORNER_HOLLOW: crate::punctuation::PunctuationMarks = crate::punctuation::
     brackets: crate::punctuation::BracketMarks::Hollow,
     enumeration_comma_backslash: true,
     enumeration_comma_slash: false,
+    profile: crate::punctuation::PunctuationProfile::Standard,
 };
 
 #[test]

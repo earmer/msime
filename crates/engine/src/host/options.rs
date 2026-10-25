@@ -9,7 +9,7 @@ use crate::diagnostics;
 use crate::error::{EngineError, Result};
 use crate::helpcode::SharedKeymap;
 use crate::paths::RuntimePaths;
-use crate::punctuation::{BracketMarks, PunctuationMarks, QuoteMarks};
+use crate::punctuation::{BracketMarks, PunctuationMarks, PunctuationProfile, QuoteMarks};
 use crate::session::SessionOptions;
 use crate::types::{
     autocorrect_type, fuzzy_rule, CommandTableEntry, EnglishInputOptions, FrequencyAdjustmentMode,
@@ -364,6 +364,8 @@ pub fn session_options(options: &EngineOptions) -> Result<SessionOptions> {
         },
         enumeration_comma_backslash: options.enumeration_comma_backslash,
         enumeration_comma_slash: options.enumeration_comma_slash,
+        // 档案还没有宿主选项；第一个宿主接入时在 `EngineOptions` 里加字段，再改这里。
+        profile: PunctuationProfile::Standard,
     };
     session.helpcode = options.helpcode;
     session.helpcode_trigger_key = options.helpcode_trigger_key;
