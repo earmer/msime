@@ -48,7 +48,7 @@ pub enum BracketMarks {
     Hollow,
 }
 
-/// 整套标点键位的档案。`Standard` 是契约里的那张表；`MacosPinyin` 对齐 macOS 自带「简体拼音」的键位，在它之上多出三件事：`~` 出 `～`、`|` 出 `｜`、`$` 出 `¥`（U+00A5，不是 `￥`），并且 `{` `}` 按嵌套深度出「『』」，见 `PunctuationPolicy::translate_in_context`。
+/// 整套标点键位的档案。`Standard` 是契约里的那张表；`MacosPinyin` 对齐 macOS 自带「简体拼音」的键位，在它之上多出两件事：`~` 出 `～`、`|` 出 `｜`，并且 `{` `}` 按嵌套深度出「『』」，见 `PunctuationPolicy::translate_in_context`。
 ///
 /// 档案只改键位，不改引号样式：`MacosPinyin` 下 `'` `"` 仍按 `quotes` 出弯引号或直角引号。契约（`policy.json`）暂未收录这个档案，第一个宿主接入它时再升版本，在此之前宿主的手抄表不需要动。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -82,8 +82,8 @@ impl Default for PunctuationMarks {
     }
 }
 
-/// `MacosPinyin` 档案里 `simple` 之外多出来的单键映射。优先于 `SIMPLE`，所以 `$` 在这里出 `¥`（U+00A5）而不是 `￥`。
-const MACOS_PINYIN_SIMPLE: [(u8, &str); 3] = [(b'~', "～"), (b'|', "｜"), (b'$', "¥")];
+/// `MacosPinyin` 档案里 `simple` 之外多出来的单键映射。`$` 不在这里：macOS 的 `¥`（U+00A5）就是 host-api 在半角下对 `$` 标点尾巴做的改写（见 `2026-10-15-currency-punctuation-character-width.md`），引擎照旧出 `￥`，全角时宿主仍得到 `￥`。
+const MACOS_PINYIN_SIMPLE: [(u8, &str); 2] = [(b'~', "～"), (b'|', "｜")];
 
 const CORNER_NESTING_OPENING_INPUT: u8 = b'{';
 const CORNER_NESTING_CLOSING_INPUT: u8 = b'}';
@@ -334,12 +334,12 @@ mod tests {
         assert_eq!(joined(translate_all(&mut policy, "{{}}")), "「」『』");
     }
 
-    /// 单键映射：`$` 出 U+00A5，不是全角的 U+FFE5。
+    /// 单键映射：`~` `|` 多出来；`$` 仍是引擎的 `￥`，半角下改成 `¥` 是 host-api 的事。
     #[test]
-    fn macos_pinyin_adds_three_keys() {
+    fn macos_pinyin_adds_two_keys() {
         let mut policy = macos_pinyin();
-        assert_eq!(joined(translate_all(&mut policy, "~|$")), "～｜¥");
-        assert_eq!(policy.translate(b'$'), Some("\u{a5}"));
+        assert_eq!(joined(translate_all(&mut policy, "~|")), "～｜");
+        assert_eq!(policy.translate(b'$'), Some("\u{ffe5}"));
         // 其余键仍是契约里的表。
         assert_eq!(
             joined(translate_all(&mut policy, ",.?!;:()[]\\`^_")),

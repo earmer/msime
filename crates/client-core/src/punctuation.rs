@@ -1,6 +1,8 @@
 //! Host-context punctuation decisions shared by native clients.
 
-use crate::preferences::{BracketStyle, Preferences, PunctuationLock, QuoteStyle};
+use crate::preferences::{
+    BracketStyle, Preferences, PunctuationLock, PunctuationProfile, QuoteStyle,
+};
 
 /// 解析后的引号样式：`corner_when_traditional` 已按繁体开关定成两者之一。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
@@ -20,6 +22,9 @@ pub struct PunctuationMarks {
     pub enumeration_comma_backslash: bool,
     /// `/` 键在中文标点下出顿号「、」。
     pub enumeration_comma_slash: bool,
+    /// 键位档案。缺省的 `standard` 不写进 View，老宿主读到的 JSON 与之前逐字相同。
+    #[serde(skip_serializing_if = "PunctuationProfile::is_default")]
+    pub profile: PunctuationProfile,
 }
 
 impl Default for PunctuationMarks {
@@ -30,6 +35,7 @@ impl Default for PunctuationMarks {
             brackets: BracketStyle::Solid,
             enumeration_comma_backslash: true,
             enumeration_comma_slash: false,
+            profile: PunctuationProfile::Standard,
         }
     }
 }
@@ -51,6 +57,7 @@ pub fn punctuation_marks(preferences: &Preferences) -> PunctuationMarks {
         brackets: preferences.bracket_style,
         enumeration_comma_backslash: preferences.enumeration_comma_backslash || !slash,
         enumeration_comma_slash: slash,
+        profile: preferences.punctuation_profile,
     }
 }
 
@@ -791,6 +798,22 @@ mod tests {
                 ..PunctuationMarks::default()
             }
         );
+    }
+
+    /// 键位档案原样带进解析结果；缺省档案不出现在序列化里，老宿主读到的 View 与之前逐字相同。
+    #[test]
+    fn punctuation_marks_carry_the_profile() {
+        let marks = punctuation_marks(&Preferences {
+            punctuation_profile: PunctuationProfile::MacosPinyin,
+            ..Preferences::default()
+        });
+        assert_eq!(marks.profile, PunctuationProfile::MacosPinyin);
+        assert_eq!(
+            serde_json::to_value(marks).unwrap()["profile"],
+            "macos_pinyin"
+        );
+        let standard = serde_json::to_value(PunctuationMarks::default()).unwrap();
+        assert!(standard.get("profile").is_none());
     }
 
     /// 顿号自定义（契约 `enumerationComma` 段）：`\` 默认开、`/` 默认关；手改文档把两个都关掉时归一成「`\` 开」，采用 Windows IPC 无效值的反斜杠回退。

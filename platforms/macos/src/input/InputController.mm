@@ -1216,6 +1216,11 @@ static msime::input::PunctuationMarks MSIMEViewPunctuationMarks(NSDictionary *vi
         ![marks[@"enumeration_comma_backslash"] isEqual:@NO],
         [marks[@"enumeration_comma_slash"] isEqual:@YES]);
 }
+// 键位档案是 macos_pinyin 时 View 的 punctuation_marks 带 `profile`；缺省档案不带这个键，老 View 也读作缺省。
+static BOOL MSIMEViewUsesMacosPinyinPunctuation(NSDictionary *view) {
+    NSDictionary *marks = [view isKindOfClass:NSDictionary.class] ? view[@"punctuation_marks"] : nil;
+    return [marks isKindOfClass:NSDictionary.class] && [marks[@"profile"] isEqual:@"macos_pinyin"];
+}
 // `、` 的 ASCII 孪生按出的键算：`/` 出的顿号转回 `/`，`\` 出的转回 `\`——哪个键开着才算数，与直角引号 `MSIMEKeyProducesCornerQuote` 同一条「按出的键算」规则。
 static BOOL MSIMEKeyProducesEnumerationComma(unichar key, unichar mark,
                                              const msime::input::PunctuationMarks &marks) {
@@ -7639,6 +7644,18 @@ static BOOL MSIMEClaimPreferenceRecovery(NSString *directory) {
         const BOOL opening = [event.characters isEqualToString:@"{"];
         const BOOL composing = [_view[@"editing_text"] length] || [_view[@"candidates"] count] ||
             [_view[@"phrase_prefix"] length];
+        // macOS 简体拼音档案：`{` `}` 的字由引擎按嵌套深度给出（「『』」），宿主不再写死成「」，也不补右半个——macOS 自带输入法同样不补。引擎没接手（返回未处理）时落回下面原有的路线。
+        if (MSIMEViewUsesMacosPinyinPunctuation(_view)) {
+            const uint8_t profileKey = opening ? '{' : '}';
+            NSDictionary *profileTransition = [_session punctuation:profileKey error:nil];
+            // 会话失败时保留组字，不能把标点直接写进应用而丢掉尚未提交的拼音。
+            if (!profileTransition) return YES;
+            if (MSIMEStrictBoolean(profileTransition[@"handled"])) {
+                _punctuationKeyInFlight = profileKey;
+                [self apply:profileTransition];
+                return YES;
+            }
+        }
         // 只跨过本宿主补出的、并且仍在光标后的右引号，不触碰文档原有的文字。
         if (!opening && !composing && _appearance.pairedPunctuation && _pairedPunctuation.matches("」")) {
             NSString *following = MSIMETextClientFollowingCharacter((id<MSIMETextClient>)sender);

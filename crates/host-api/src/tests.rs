@@ -315,6 +315,7 @@ fn local_mode_resource_gates_preserve_unrelated_modes() {
         hollow_brackets: false,
         enumeration_comma_backslash: true,
         enumeration_comma_slash: false,
+        macos_pinyin_punctuation: false,
         frequency_mode: "disabled".into(),
         frequency_trigger_count: 1,
         frequency_linear_step: 1,
@@ -18350,6 +18351,60 @@ fn punctuation_marks_follow_preferences_and_the_view_reports_them() {
         read(msime_client_punctuation_with_context(handle, b'\\', 0))["value"]["handled"],
         false
     );
+    read(msime_client_destroy(handle));
+}
+
+/// 键位档案随偏好在空闲时重建生效：缺省档案下 View 不带 `profile`，`~` `|` 交回宿主；`macos_pinyin` 下 View 报告它，`~` `|` 和嵌套的 `{` `}` 出 macOS 简体拼音的字。
+#[test]
+fn macos_pinyin_profile_follows_the_preference() {
+    let dir = tempfile::tempdir().unwrap();
+    let handle = test_host(dir.path());
+    read(msime_client_focus(handle, true));
+    assert!(
+        read(msime_client_view(handle))["value"]["punctuation_marks"]
+            .get("profile")
+            .is_none()
+    );
+    assert_eq!(
+        read(msime_client_punctuation_with_context(handle, b'~', 0))["value"]["handled"],
+        false
+    );
+    // `$` 在半角下本来就出 U+00A5，档案不改它。
+    assert_eq!(punctuation_commit(handle, b'$'), "\u{a5}");
+
+    let profile = Preferences {
+        punctuation_profile: msime_client_core::preferences::PunctuationProfile::MacosPinyin,
+        ..chinese_preferences()
+    };
+    assert_eq!(update(handle, 1, &profile)["value"]["deferred"], false);
+    assert_eq!(
+        read(msime_client_view(handle))["value"]["punctuation_marks"]["profile"],
+        "macos_pinyin"
+    );
+    assert_eq!(punctuation_commit(handle, b'~'), "～");
+    assert_eq!(punctuation_commit(handle, b'|'), "｜");
+    assert_eq!(punctuation_commit(handle, b'$'), "\u{a5}");
+    // 重建会话重置嵌套深度，所以从最外层开始。
+    let nested: String = "{{}}{}"
+        .bytes()
+        .map(|key| punctuation_commit(handle, key))
+        .collect();
+    assert_eq!(nested, "「『』」「」");
+    // 其余键不受档案影响。
+    assert_eq!(punctuation_commit(handle, b'['), "【");
+    assert_eq!(punctuation_commit(handle, b'\''), "‘");
+
+    let standard = Preferences {
+        punctuation_profile: msime_client_core::preferences::PunctuationProfile::Standard,
+        ..chinese_preferences()
+    };
+    assert_eq!(update(handle, 2, &standard)["value"]["deferred"], false);
+    assert!(
+        read(msime_client_view(handle))["value"]["punctuation_marks"]
+            .get("profile")
+            .is_none()
+    );
+    assert_eq!(punctuation_commit(handle, b'~'), "");
     read(msime_client_destroy(handle));
 }
 

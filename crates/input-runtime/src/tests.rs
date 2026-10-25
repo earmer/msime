@@ -5180,6 +5180,7 @@ fn real_engine_options(root: &std::path::Path) -> msime_engine::host::EngineOpti
         hollow_brackets: false,
         enumeration_comma_backslash: true,
         enumeration_comma_slash: false,
+        macos_pinyin_punctuation: false,
         frequency_mode: "promote".into(),
         frequency_trigger_count: 1,
         frequency_linear_step: 1,

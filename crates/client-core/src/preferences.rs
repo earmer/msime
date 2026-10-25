@@ -897,6 +897,21 @@ impl BracketStyle {
     }
 }
 
+/// 中文标点整套键位的档案。`MacosPinyin` 对齐 macOS 自带「简体拼音」：`~` 出 `～`、`|` 出 `｜`，`{` `}` 按嵌套深度出「『』」；`$` 在半角下本来就出 `¥`，不属于档案。引擎侧的规则见 `msime_engine::punctuation::PunctuationProfile`。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PunctuationProfile {
+    #[default]
+    Standard,
+    MacosPinyin,
+}
+
+impl PunctuationProfile {
+    pub(crate) fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationTargetLanguage {
@@ -1450,6 +1465,9 @@ pub struct Preferences {
     /// 中文标点下方头括号键的样式（W#24）。等于默认值（实心）时不写进文档。
     #[serde(default, skip_serializing_if = "BracketStyle::is_default")]
     pub bracket_style: BracketStyle,
+    /// 中文标点的键位档案。等于默认值（`standard`）时不写进文档，没有这个键的旧版本照样能读。
+    #[serde(default, skip_serializing_if = "PunctuationProfile::is_default")]
+    pub punctuation_profile: PunctuationProfile,
     /// 顿号自定义：中文标点下 `\` 键输出顿号「、」（Windows v0.11.1 `input.enumeration_comma_backslash`）。默认开，等于默认值时不写进文档。两个顿号键都关掉时按「`\` 开」读，归一在 `crate::punctuation::punctuation_marks`。
     #[serde(default = "enabled_by_default", skip_serializing_if = "is_true")]
     pub enumeration_comma_backslash: bool,
@@ -3310,6 +3328,7 @@ impl Default for Preferences {
             caps_lock_ascii_punctuation: false,
             quote_style: QuoteStyle::Curly,
             bracket_style: BracketStyle::Solid,
+            punctuation_profile: PunctuationProfile::Standard,
             enumeration_comma_backslash: true,
             enumeration_comma_slash: false,
             navigation: NavigationPreferences::default(),

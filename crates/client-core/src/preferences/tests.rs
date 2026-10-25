@@ -7018,6 +7018,42 @@ fn punctuation_styles_default_omitted_roundtrip_and_reject_unknown_values() {
     }
 }
 
+// 键位档案：缺省的 `standard` 不写进文档，没有这个键的旧文档按缺省读；`macos_pinyin` 写成字符串往返，不认识的取值让整份文档解析失败，和 `quote_style` 一致。
+#[test]
+fn punctuation_profile_defaults_omitted_and_roundtrips() {
+    use crate::preferences::PunctuationProfile;
+
+    let defaults = Preferences::default();
+    assert_eq!(defaults.punctuation_profile, PunctuationProfile::Standard);
+    let written = serde_json::to_value(&defaults).unwrap();
+    assert!(written.get("punctuation_profile").is_none());
+    let read = serde_json::from_value::<Preferences>(written.clone()).unwrap();
+    assert_eq!(read.punctuation_profile, PunctuationProfile::Standard);
+
+    let dir = tempfile::tempdir().unwrap();
+    let store = PreferencesStore::new(dir.path());
+    let saved = store
+        .save(
+            0,
+            Preferences {
+                punctuation_profile: PunctuationProfile::MacosPinyin,
+                ..Preferences::default()
+            },
+        )
+        .unwrap();
+    let on_disk: serde_json::Value =
+        serde_json::from_slice(&fs::read(store.path()).unwrap()).unwrap();
+    assert_eq!(
+        on_disk["preferences"]["punctuation_profile"],
+        "macos_pinyin"
+    );
+    assert_eq!(store.load().unwrap(), saved);
+
+    let mut document = written;
+    document["punctuation_profile"] = serde_json::Value::String("apple".into());
+    assert!(serde_json::from_value::<Preferences>(document).is_err());
+}
+
 // 顿号自定义（Windows v0.11.1 `input.enumeration_comma_*`）：`\` 默认开、`/` 默认关，等于缺省时不写进文档，没有这个键的旧文档按缺省读；两个键各自的取值都能保存读回。
 #[test]
 fn enumeration_comma_keys_default_omitted_and_roundtrip() {

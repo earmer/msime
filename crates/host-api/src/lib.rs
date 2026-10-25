@@ -440,6 +440,8 @@ fn apply_punctuation_marks(
         marks.brackets == msime_client_core::preferences::BracketStyle::Hollow;
     options.enumeration_comma_backslash = marks.enumeration_comma_backslash;
     options.enumeration_comma_slash = marks.enumeration_comma_slash;
+    options.macos_pinyin_punctuation =
+        marks.profile == msime_client_core::preferences::PunctuationProfile::MacosPinyin;
 }
 
 /// The switch the Engine is handed. Windows turns the punctuation switch on whenever punctuation is locked to Chinese, while the Engine drops Chinese punctuation whenever its switch is off, so a lock to Chinese has to carry the switch with it.
@@ -2127,6 +2129,7 @@ impl HostOptions {
             hollow_brackets: false,
             enumeration_comma_backslash: true,
             enumeration_comma_slash: false,
+            macos_pinyin_punctuation: false,
         };
         apply_punctuation_marks(&mut options, &self.preferences);
         // 建会话没有地方带原因，表不能用时按小鹤建起来就够了；之后的偏好变更会在诊断里报告原因。

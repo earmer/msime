@@ -103,6 +103,8 @@ pub struct EngineOptions {
     pub enumeration_comma_backslash: bool,
     /// 中文标点下 `/` 键出顿号「、」。默认关：词首的 `/` 是命令模式触发键，命令模式优先。
     pub enumeration_comma_slash: bool,
+    /// 中文标点用 macOS 简体拼音的键位档案（`PunctuationProfile::MacosPinyin`）：`~` `|` `$` 多出三个键，`{` `}` 按嵌套深度出「『』」。宿主按偏好 `punctuation_profile` 填。
+    pub macos_pinyin_punctuation: bool,
     pub frequency_mode: String,
     pub frequency_trigger_count: u8,
     pub frequency_linear_step: u8,
@@ -242,6 +244,7 @@ pub fn prepare_options_for(
         hollow_brackets: false,
         enumeration_comma_backslash: true,
         enumeration_comma_slash: false,
+        macos_pinyin_punctuation: false,
         frequency_mode: FrequencyAdjustmentMode::Promote.name().to_owned(),
         frequency_trigger_count: 1,
         frequency_linear_step: 1,
@@ -364,8 +367,11 @@ pub fn session_options(options: &EngineOptions) -> Result<SessionOptions> {
         },
         enumeration_comma_backslash: options.enumeration_comma_backslash,
         enumeration_comma_slash: options.enumeration_comma_slash,
-        // 档案还没有宿主选项；第一个宿主接入时在 `EngineOptions` 里加字段，再改这里。
-        profile: PunctuationProfile::Standard,
+        profile: if options.macos_pinyin_punctuation {
+            PunctuationProfile::MacosPinyin
+        } else {
+            PunctuationProfile::Standard
+        },
     };
     session.helpcode = options.helpcode;
     session.helpcode_trigger_key = options.helpcode_trigger_key;
